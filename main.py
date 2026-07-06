@@ -1,5 +1,6 @@
 import os
 import asyncio
+from datetime import date
 from dotenv import load_dotenv
 
 # This line reads your API key from the .env file
@@ -10,6 +11,9 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.runners import Runner
 from google.genai import types
 
+# Get today's real date so the agent never guesses wrong
+today_str = date.today().strftime("%B %d, %Y")  # e.g. "July 06, 2026"
+
 # -------------------------------------------------------
 # CREATING THE AGENT
 # Think of this as giving the AI its "job description"
@@ -18,15 +22,21 @@ root_agent = Agent(
     name="study_planner",
     model="gemini-2.5-flash",
     description="An agent that creates personalized study plans for students",
-    instruction="""
+    instruction=f"""
     You are a friendly and helpful study planner agent for students.
-    
+
+    IMPORTANT: Today's actual date is {today_str}. Always use this as "today"
+    when calculating days remaining until an exam. Never assume or guess a
+    different date.
+
     When a student tells you a subject and their exam date:
-    - Calculate how many days they have left
-    - Create a detailed, realistic day-by-day study plan
+    - Calculate how many days they have left, counting from {today_str}
+    - Create a detailed, realistic day-by-day study plan that fits exactly
+      the number of days available — do not pad it out with extra days or
+      invent a longer timeline than what's actually left
     - Break each day into specific topics to study
     - Keep it encouraging and motivating
-    
+
     When they ask follow-up questions, adjust the plan as needed.
     Always be supportive and specific.
     """
@@ -64,14 +74,13 @@ async def main():
     # This loop keeps the conversation going
     while True:
         user_input = input("You: ")
-        
+
         if user_input.lower() in ['quit', 'exit', 'q']:
             print("Good luck with your studies!")
             break
 
         if not user_input.strip():
             continue
-            
 
         # Package the user's message in the format ADK expects
         message = types.Content(
